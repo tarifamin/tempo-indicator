@@ -210,7 +210,7 @@ f_smt_detect() =>
 if show_smt and smt_enabled and not na(pair_symbol)
     // Get pivot high/low for current symbol
     ph_current = ta.pivothigh(high, smt_pivot_len, smt_pivot_len)
-    pl_current = ta.pivothigh(low, smt_pivot_len, smt_pivot_len)
+    pl_current = ta.pivotlow(low, smt_pivot_len, smt_pivot_len)
     
     // Get pivot high/low for pair symbol
     ph_pair = request.security(pair_symbol, timeframe.period, ta.pivothigh(high, smt_pivot_len, smt_pivot_len), lookahead=barmerge.lookahead_off)
@@ -219,9 +219,9 @@ if show_smt and smt_enabled and not na(pair_symbol)
     // Detect bullish SMT divergence
     if not na(ph_current) and not na(pl_pair)
         if ph_current > ph_pair[1] and pl_pair < pl_pair[1]
-            smt_line = line.new(bar_index[smt_pivot_len], ph_current, bar_index, ph_current, 
+            smt_line = line.new(bar_index - smt_pivot_len, ph_current, bar_index, ph_current,
                                 xloc=xloc.bar_index, color=smt_bull_color, width=2, style=line.style_dashed)
-            smt_label_obj = label.new(bar_index, ph_current, "SMT ↑", 
+            smt_label_obj = label.new(bar_index, ph_current, "SMT ↑",
                                       xloc=xloc.bar_index, color=smt_bull_color, textcolor=color.white, size=size.small)
             array.push(smt_lines, smt_line)
             array.push(smt_labels, smt_label_obj)
@@ -229,7 +229,7 @@ if show_smt and smt_enabled and not na(pair_symbol)
     // Detect bearish SMT divergence
     if not na(pl_current) and not na(ph_pair)
         if pl_current < pl_pair[1] and ph_pair > ph_pair[1]
-            smt_line = line.new(bar_index[smt_pivot_len], pl_current, bar_index, pl_current,
+            smt_line = line.new(bar_index - smt_pivot_len, pl_current, bar_index, pl_current,
                                 xloc=xloc.bar_index, color=smt_bear_color, width=2, style=line.style_dashed)
             smt_label_obj = label.new(bar_index, pl_current, "SMT ↓",
                                       xloc=xloc.bar_index, color=smt_bear_color, textcolor=color.white, size=size.small)
