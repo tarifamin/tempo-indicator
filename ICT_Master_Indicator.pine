@@ -1,0 +1,712 @@
+//@version=5
+indicator("ICT Master Indicator", overlay=true,
+          max_boxes_count  = 500,
+          max_lines_count  = 500,
+          max_labels_count = 500)
+
+// ═══════════════════════════════════════════════
+// ── FVG SETTINGS ───────────────────────────────
+// ═══════════════════════════════════════════════
+show_fvg         = input.bool(true,  "Show FVGs",                          group="📦 FVG Settings")
+fvg_bull_color   = input.color(color.new(color.green, 70), "Bull Color",   group="📦 FVG Settings")
+fvg_bear_color   = input.color(color.new(color.red,   70), "Bear Color",   group="📦 FVG Settings")
+fvg_bull_opacity = input.int(70, "Bull Opacity",   minval=0, maxval=100,   group="📦 FVG Settings")
+fvg_bear_opacity = input.int(70, "Bear Opacity",   minval=0, maxval=100,   group="📦 FVG Settings")
+fvg_width        = input.int(5,  "Box Width (1–10)", minval=1, maxval=10,  group="📦 FVG Settings")
+fvg_max          = input.int(50, "Max Boxes Per Side", minval=5, maxval=200, group="📦 FVG Settings")
+
+// ═══════════════════════════════════════════════
+// ── SMT SETTINGS ───────────────────────────────
+// ═══════════════════════════════════════════════
+show_smt         = input.bool(true, "Show SMT Divergence",                 group="📡 SMT Settings")
+smt_bull_color   = input.color(color.aqua,   "Bullish SMT Color",          group="📡 SMT Settings")
+smt_bear_color   = input.color(color.orange, "Bearish SMT Color",           group="📡 SMT Settings")
+smt_pivot_len    = input.int(5, "Pivot Lookback (bars)",  minval=1,        group="📡 SMT Settings")
+
+// ═══════════════════════════════════════════════
+// ── DAILY RANGE SETTINGS ───────────────────────
+// ═══════════════════════════════════════════════
+show_eq          = input.bool(true, "Show 50% Daily Range",                group="📏 Daily Range")
+eq_color         = input.color(color.yellow, "Midpoint Color",             group="📏 Daily Range")
+eq_session_hour  = input.int(18, "Session Start Hour (NY UTC-4)",          group="📏 Daily Range", minval=0, maxval=23)
+eq_session_min   = input.int(0,  "Session Start Minute",                   group="📏 Daily Range", minval=0, maxval=59)
+
+// ═══════════════════════════════════════════════
+// ── KILLZONE SETTINGS ──────────────────────────
+// ═══════════════════════════════════════════════
+// Asia
+show_asia        = input.bool(true,  "Asia Killzone",                      group="🕐 Killzones")
+asia_color       = input.color(color.new(color.purple, 85), "Asia Color",  group="🕐 Killzones")
+asia_sh          = input.int(20, "Asia Start Hour",  minval=0, maxval=23,  group="🕐 Killzones")
+asia_sm          = input.int(0,  "Asia Start Min",   minval=0, maxval=59,  group="🕐 Killzones")
+asia_eh          = input.int(0,  "Asia End Hour",    minval=0, maxval=23,  group="🕐 Killzones")
+asia_em          = input.int(0,  "Asia End Min",     minval=0, maxval=59,  group="🕐 Killzones")
+// London
+show_london      = input.bool(true,  "London Killzone",                    group="🕐 Killzones")
+london_color     = input.color(color.new(color.blue, 85), "London Color",  group="🕐 Killzones")
+lon_sh           = input.int(2,  "London Start Hour", minval=0, maxval=23, group="🕐 Killzones")
+lon_sm           = input.int(0,  "London Start Min",  minval=0, maxval=59, group="🕐 Killzones")
+lon_eh           = input.int(5,  "London End Hour",   minval=0, maxval=23, group="🕐 Killzones")
+lon_em           = input.int(0,  "London End Min",    minval=0, maxval=59, group="🕐 Killzones")
+// NY Open
+show_nyopen      = input.bool(true,  "NY Open Killzone",                   group="🕐 Killzones")
+nyopen_color     = input.color(color.new(color.orange, 85), "NY Open Color", group="🕐 Killzones")
+nyo_sh           = input.int(9,  "NY Open Start Hour",  minval=0, maxval=23, group="🕐 Killzones")
+nyo_sm           = input.int(30, "NY Open Start Min",   minval=0, maxval=59, group="🕐 Killzones")
+nyo_eh           = input.int(11, "NY Open End Hour",    minval=0, maxval=23, group="🕐 Killzones")
+nyo_em           = input.int(0,  "NY Open End Min",     minval=0, maxval=59, group="🕐 Killzones")
+// NY Close
+show_nyclose     = input.bool(true,  "NY Close Killzone",                  group="🕐 Killzones")
+nyclose_color    = input.color(color.new(color.red, 85), "NY Close Color", group="🕐 Killzones")
+nyc_sh           = input.int(14, "NY Close Start Hour", minval=0, maxval=23, group="🕐 Killzones")
+nyc_sm           = input.int(30, "NY Close Start Min",  minval=0, maxval=59, group="🕐 Killzones")
+nyc_eh           = input.int(16, "NY Close End Hour",   minval=0, maxval=23, group="🕐 Killzones")
+nyc_em           = input.int(0,  "NY Close End Min",    minval=0, maxval=59, group="🕐 Killzones")
+
+// ═══════════════════════════════════════════════
+// ── 1H SWING SETTINGS ──────────────────────────
+// ═══════════════════════════════════════════════
+show_1h          = input.bool(true,  "Show 1H Swing Levels",               group="📊 1H Swings")
+show_1h_eq       = input.bool(true,  "Show 1H Equal Highs/Lows",           group="📊 1H Swings")
+h1_high_color    = input.color(color.red,   "1H High Color",               group="📊 1H Swings")
+h1_low_color     = input.color(color.green, "1H Low Color",                group="📊 1H Swings")
+h1_eq_color      = input.color(color.yellow,"1H Equal Level Color",        group="📊 1H Swings")
+h1_width         = input.int(1, "1H Line Width", minval=1, maxval=4,       group="📊 1H Swings")
+h1_style         = input.string("solid", "1H Line Style",
+                     options=["solid","dashed","dotted"],                   group="📊 1H Swings")
+h1_pivot_left    = input.int(10, "1H Pivot Left Bars",  minval=1, maxval=50, group="📊 1H Swings")
+h1_pivot_right   = input.int(10, "1H Pivot Right Bars", minval=1, maxval=50, group="📊 1H Swings")
+h1_show_labels   = input.bool(true,  "Show 1H Labels",                     group="📊 1H Swings")
+
+// ═══════════════════════════════════════════════
+// ── 4H SWING SETTINGS ──────────────────────────
+// ═══════════════════════════════════════════════
+show_4h          = input.bool(true,  "Show 4H Swing Levels",               group="📊 4H Swings")
+show_4h_eq       = input.bool(true,  "Show 4H Equal Highs/Lows",           group="📊 4H Swings")
+h4_high_color    = input.color(color.red,   "4H High Color",               group="📊 4H Swings")
+h4_low_color     = input.color(color.green, "4H Low Color",                group="📊 4H Swings")
+h4_eq_color      = input.color(color.yellow,"4H Equal Level Color",        group="📊 4H Swings")
+h4_width         = input.int(1, "4H Line Width", minval=1, maxval=4,       group="📊 4H Swings")
+h4_style         = input.string("solid", "4H Line Style",
+                     options=["solid","dashed","dotted"],                   group="📊 4H Swings")
+h4_pivot_left    = input.int(5, "4H Pivot Left Bars",  minval=1, maxval=25, group="📊 4H Swings")
+h4_pivot_right   = input.int(5, "4H Pivot Right Bars", minval=1, maxval=25, group="📊 4H Swings")
+h4_show_labels   = input.bool(true,  "Show 4H Labels",                     group="📊 4H Swings")
+
+// ═══════════════════════════════════════════════
+// ── DAILY SWING SETTINGS ───────────────────────
+// ═══════════════════════════════════════════════
+show_d           = input.bool(true,  "Show Daily Swing Levels",            group="📊 Daily Swings")
+show_d_eq        = input.bool(true,  "Show Daily Equal Highs/Lows",        group="📊 Daily Swings")
+d_high_color     = input.color(color.red,   "D High Color",                group="📊 Daily Swings")
+d_low_color      = input.color(color.green, "D Low Color",                 group="📊 Daily Swings")
+d_eq_color       = input.color(color.yellow,"D Equal Level Color",         group="📊 Daily Swings")
+d_width          = input.int(2, "Daily Line Width", minval=1, maxval=4,    group="📊 Daily Swings")
+d_style          = input.string("solid", "Daily Line Style",
+                     options=["solid","dashed","dotted"],                   group="📊 Daily Swings")
+d_pivot_left     = input.int(3, "Daily Pivot Left Bars",  minval=1, maxval=15, group="📊 Daily Swings")
+d_pivot_right    = input.int(3, "Daily Pivot Right Bars", minval=1, maxval=15, group="📊 Daily Swings")
+d_show_labels    = input.bool(true,  "Show Daily Labels",                  group="📊 Daily Swings")
+
+// Equal level tolerance (shared across all TFs)
+eq_tolerance     = input.int(15, "Equal Level Tolerance (ticks)",
+                     minval=0, maxval=100,                                  group="📊 Equal Levels")
+
+// ═══════════════════════════════════════════════
+// ── MODULE 1: FVG ENGINE ───────────────────────
+// ═══════════════════════════════════════════════
+
+var box[] bull_fvgs = array.new_box()
+var box[] bear_fvgs = array.new_box()
+
+f_detect_fvg() =>
+    // Detect bullish FVG: candle 1 down, candle 2 down, gap up on candle 3
+    bull_fvg = false
+    bull_gap_top = na
+    bull_gap_bot = na
+    
+    if bar_index >= 2
+        if close[2] > open[2] and close[1] > open[1]  // last 2 candles up
+            if low > high[2]  // gap between candle 3 and candle 1
+                bull_fvg := true
+                bull_gap_top := high
+                bull_gap_bot := high[2]
+    
+    // Detect bearish FVG: candle 1 up, candle 2 up, gap down on candle 3
+    bear_fvg = false
+    bear_gap_top = na
+    bear_gap_bot = na
+    
+    if bar_index >= 2
+        if close[2] < open[2] and close[1] < open[1]  // last 2 candles down
+            if high < low[2]  // gap between candle 3 and candle 1
+                bear_fvg := true
+                bear_gap_top := low[2]
+                bear_gap_bot := low
+    
+    [bull_fvg, bull_gap_bot, bull_gap_top, bear_fvg, bear_gap_bot, bear_gap_top]
+
+[is_bull_fvg, bull_bot, bull_top, is_bear_fvg, bear_bot, bear_top] = f_detect_fvg()
+
+if show_fvg
+    if is_bull_fvg
+        // Calculate box width based on fvg_width slider
+        box_right = bar_index + math.round((fvg_width - 1) * 10)
+        
+        bull_color_with_opacity = color.new(fvg_bull_color, 100 - fvg_bull_opacity)
+        new_bull_box = box.new(left=bar_index, top=bull_top, right=box_right, bottom=bull_bot,
+                               border_color=na, bgcolor=bull_color_with_opacity)
+        array.push(bull_fvgs, new_bull_box)
+        
+        // Manage max cap for bull FVGs
+        if array.size(bull_fvgs) > fvg_max
+            old_box = array.shift(bull_fvgs)
+            box.delete(old_box)
+    
+    if is_bear_fvg
+        // Calculate box width based on fvg_width slider
+        box_right = bar_index + math.round((fvg_width - 1) * 10)
+        
+        bear_color_with_opacity = color.new(fvg_bear_color, 100 - fvg_bear_opacity)
+        new_bear_box = box.new(left=bar_index, top=bear_top, right=box_right, bottom=bear_bot,
+                               border_color=na, bgcolor=bear_color_with_opacity)
+        array.push(bear_fvgs, new_bear_box)
+        
+        // Manage max cap for bear FVGs
+        if array.size(bear_fvgs) > fvg_max
+            old_box = array.shift(bear_fvgs)
+            box.delete(old_box)
+
+// ═══════════════════════════════════════════════
+// ── MODULE 2: SMT DIVERGENCE ───────────────────
+// ═══════════════════════════════════════════════
+
+var line[] smt_lines = array.new_line()
+var label[] smt_labels = array.new_label()
+
+f_smt_detect() =>
+    ticker = syminfo.ticker
+    is_nq = ticker == "NQ1!" or ticker == "NQFUT"
+    is_es = ticker == "ES1!" or ticker == "ESFUT"
+    is_mnq = ticker == "MNQ1!" or ticker == "MNQFUT"
+    is_mes = ticker == "MES1!" or ticker == "MESFUT"
+    
+    smt_active = (is_nq or is_es or is_mnq or is_mes)
+    
+    pair_ticker = na(string)
+    if is_nq
+        pair_ticker := "ES1!"
+    if is_es
+        pair_ticker := "NQ1!"
+    if is_mnq
+        pair_ticker := "MES1!"
+    if is_mes
+        pair_ticker := "MNQ1!"
+    
+    [smt_active, pair_ticker]
+
+[smt_enabled, pair_symbol] = f_smt_detect()
+
+if show_smt and smt_enabled and not na(pair_symbol)
+    // Get pivot high/low for current symbol
+    ph_current = ta.pivothigh(high, smt_pivot_len, smt_pivot_len)
+    pl_current = ta.pivothigh(low, smt_pivot_len, smt_pivot_len)
+    
+    // Get pivot high/low for pair symbol
+    ph_pair = request.security(pair_symbol, timeframe.period, ta.pivothigh(high, smt_pivot_len, smt_pivot_len), lookahead=barmerge.lookahead_off)
+    pl_pair = request.security(pair_symbol, timeframe.period, ta.pivotlow(low, smt_pivot_len, smt_pivot_len), lookahead=barmerge.lookahead_off)
+    
+    // Detect bullish SMT divergence
+    if not na(ph_current) and not na(pl_pair)
+        if ph_current > ph_pair[1] and pl_pair < pl_pair[1]
+            smt_line = line.new(bar_index[smt_pivot_len], ph_current, bar_index, ph_current, 
+                                xloc=xloc.bar_index, color=smt_bull_color, width=2, style=line.style_dashed)
+            smt_label_obj = label.new(bar_index, ph_current, "SMT ↑", 
+                                      xloc=xloc.bar_index, color=smt_bull_color, textcolor=color.white, size=size.small)
+            array.push(smt_lines, smt_line)
+            array.push(smt_labels, smt_label_obj)
+    
+    // Detect bearish SMT divergence
+    if not na(pl_current) and not na(ph_pair)
+        if pl_current < pl_pair[1] and ph_pair > ph_pair[1]
+            smt_line = line.new(bar_index[smt_pivot_len], pl_current, bar_index, pl_current,
+                                xloc=xloc.bar_index, color=smt_bear_color, width=2, style=line.style_dashed)
+            smt_label_obj = label.new(bar_index, pl_current, "SMT ↓",
+                                      xloc=xloc.bar_index, color=smt_bear_color, textcolor=color.white, size=size.small)
+            array.push(smt_lines, smt_line)
+            array.push(smt_labels, smt_label_obj)
+    
+    // Cleanup old SMT visuals (keep last 50)
+    if array.size(smt_lines) > 50
+        old_line = array.shift(smt_lines)
+        old_label = array.shift(smt_labels)
+        line.delete(old_line)
+        label.delete(old_label)
+
+// ═══════════════════════════════════════════════
+// ── MODULE 3: 50% DAILY RANGE ──────────────────
+// ═══════════════════════════════════════════════
+
+var float session_high = na
+var float session_low = na
+var int session_start_bar = na
+var line eq_line = na
+var label eq_label = na
+
+f_session_time_check(hour, minute) =>
+    // Check if current bar time matches session start (NY time UTC-4)
+    current_hour = hour(time)
+    current_minute = minute(time)
+    
+    // Adjust for timezone (assuming chart is in UTC, convert to UTC-4)
+    adjusted_hour = current_hour - 4
+    if adjusted_hour < 0
+        adjusted_hour := adjusted_hour + 24
+    
+    is_session_start = (adjusted_hour == hour and current_minute >= minute and current_minute < minute + 1)
+    is_session_start
+
+if show_eq
+    // Check if session start time reached
+    if f_session_time_check(eq_session_hour, eq_session_min)
+        session_high := high
+        session_low := low
+        session_start_bar := bar_index
+    
+    // Update session high/low
+    if not na(session_high)
+        session_high := math.max(session_high, high)
+        session_low := math.min(session_low, low)
+        
+        // Calculate and draw midpoint
+        midpoint = (session_high + session_low) / 2
+        
+        if not na(eq_line)
+            line.delete(eq_line)
+        if not na(eq_label)
+            label.delete(eq_label)
+        
+        eq_line := line.new(session_start_bar, midpoint, bar_index, midpoint,
+                            xloc=xloc.bar_index, color=eq_color, width=2)
+        eq_label := label.new(bar_index, midpoint, "EQ " + str.tostring(midpoint, "#.##"),
+                              xloc=xloc.bar_index, color=eq_color, textcolor=color.black, size=size.small)
+
+// ═══════════════════════════════════════════════
+// ── MODULE 4: SESSION KILLZONES ────────────────
+// ═══════════════════════════════════════════════
+
+f_is_in_killzone(start_h, start_m, end_h, end_m) =>
+    // Convert current time to UTC-4 (NY time)
+    current_h = hour(time)
+    current_m = minute(time)
+    adjusted_h = current_h - 4
+    if adjusted_h < 0
+        adjusted_h := adjusted_h + 24
+    
+    current_mins = adjusted_h * 60 + current_m
+    start_mins = start_h * 60 + start_m
+    end_mins = end_h * 60 + end_m
+    
+    // Handle overnight sessions
+    if end_mins < start_mins
+        (current_mins >= start_mins) or (current_mins < end_mins)
+    else
+        (current_mins >= start_mins and current_mins < end_mins)
+
+// Asia Killzone
+if show_asia
+    if f_is_in_killzone(asia_sh, asia_sm, asia_eh, asia_em)
+        bgcolor(asia_color)
+
+// London Killzone
+if show_london
+    if f_is_in_killzone(lon_sh, lon_sm, lon_eh, lon_em)
+        bgcolor(london_color)
+
+// NY Open Killzone
+if show_nyopen
+    if f_is_in_killzone(nyo_sh, nyo_sm, nyo_eh, nyo_em)
+        bgcolor(nyopen_color)
+
+// NY Close Killzone
+if show_nyclose
+    if f_is_in_killzone(nyc_sh, nyc_sm, nyc_eh, nyc_em)
+        bgcolor(nyclose_color)
+
+// ═══════════════════════════════════════════════
+// ── MODULE 5: SWING POINTS + EQUAL LEVELS ──────
+// ═══════════════════════════════════════════════
+
+// Chart TF gating
+chart_tf_mins = timeframe.in_seconds() / 60
+show_1h_on_chart = show_1h and (chart_tf_mins <= 60)
+show_4h_on_chart = show_4h and (chart_tf_mins <= 240)
+show_d_on_chart = show_d and (chart_tf_mins <= 1440)
+
+// 1H Swing Arrays
+var line[] lines_1h_high = array.new_line()
+var float[] prices_1h_high = array.new_float()
+var int[] bars_1h_high = array.new_int()
+var bool[] swept_1h_high = array.new_bool()
+var int[] sweep_bar_1h_high = array.new_int()
+var label[] labels_1h_high = array.new_label()
+
+var line[] lines_1h_low = array.new_line()
+var float[] prices_1h_low = array.new_float()
+var int[] bars_1h_low = array.new_int()
+var bool[] swept_1h_low = array.new_bool()
+var int[] sweep_bar_1h_low = array.new_int()
+var label[] labels_1h_low = array.new_label()
+
+// 4H Swing Arrays
+var line[] lines_4h_high = array.new_line()
+var float[] prices_4h_high = array.new_float()
+var int[] bars_4h_high = array.new_int()
+var bool[] swept_4h_high = array.new_bool()
+var int[] sweep_bar_4h_high = array.new_int()
+var label[] labels_4h_high = array.new_label()
+
+var line[] lines_4h_low = array.new_line()
+var float[] prices_4h_low = array.new_float()
+var int[] bars_4h_low = array.new_int()
+var bool[] swept_4h_low = array.new_bool()
+var int[] sweep_bar_4h_low = array.new_int()
+var label[] labels_4h_low = array.new_label()
+
+// Daily Swing Arrays
+var line[] lines_d_high = array.new_line()
+var float[] prices_d_high = array.new_float()
+var int[] bars_d_high = array.new_int()
+var bool[] swept_d_high = array.new_bool()
+var int[] sweep_bar_d_high = array.new_int()
+var label[] labels_d_high = array.new_label()
+
+var line[] lines_d_low = array.new_line()
+var float[] prices_d_low = array.new_float()
+var int[] bars_d_low = array.new_int()
+var bool[] swept_d_low = array.new_bool()
+var int[] sweep_bar_d_low = array.new_int()
+var label[] labels_d_low = array.new_label()
+
+// Equal level arrays (tracking equal highs/lows)
+var line[] lines_1h_eq = array.new_line()
+var label[] labels_1h_eq = array.new_label()
+var line[] lines_4h_eq = array.new_line()
+var label[] labels_4h_eq = array.new_label()
+var line[] lines_d_eq = array.new_line()
+var label[] labels_d_eq = array.new_label()
+
+// Helper function to draw swing line and label
+f_draw_swing_line(price, tf_str, is_high, bar_idx, line_color, label_str, array_lines, array_prices, array_bars, array_labels) =>
+    new_line = line.new(bar_idx, price, bar_index, price, xloc=xloc.bar_index, color=line_color, width=h1_width, style=h1_style)
+    array.push(array_lines, new_line)
+    array.push(array_prices, price)
+    array.push(array_bars, bar_idx)
+    
+    if h1_show_labels
+        new_label = label.new(bar_index, price, label_str, xloc=xloc.bar_index, color=line_color, textcolor=color.white, size=size.small)
+        array.push(array_labels, new_label)
+
+// Fetch MTF data via request.security
+ph_1h = request.security(syminfo.tickerid, "60", ta.pivothigh(high, h1_pivot_left, h1_pivot_right), lookahead=barmerge.lookahead_off)
+pl_1h = request.security(syminfo.tickerid, "60", ta.pivotlow(low, h1_pivot_left, h1_pivot_right), lookahead=barmerge.lookahead_off)
+
+ph_4h = request.security(syminfo.tickerid, "240", ta.pivothigh(high, h4_pivot_left, h4_pivot_right), lookahead=barmerge.lookahead_off)
+pl_4h = request.security(syminfo.tickerid, "240", ta.pivotlow(low, h4_pivot_left, h4_pivot_right), lookahead=barmerge.lookahead_off)
+
+ph_d = request.security(syminfo.tickerid, "D", ta.pivothigh(high, d_pivot_left, d_pivot_right), lookahead=barmerge.lookahead_off)
+pl_d = request.security(syminfo.tickerid, "D", ta.pivotlow(low, d_pivot_left, d_pivot_right), lookahead=barmerge.lookahead_off)
+
+// Get bar_index from MTF
+bar_idx_1h = request.security(syminfo.tickerid, "60", bar_index, lookahead=barmerge.lookahead_off)
+bar_idx_4h = request.security(syminfo.tickerid, "240", bar_index, lookahead=barmerge.lookahead_off)
+bar_idx_d = request.security(syminfo.tickerid, "D", bar_index, lookahead=barmerge.lookahead_off)
+
+// Process 1H swings
+if show_1h_on_chart
+    if not na(ph_1h)
+        array.push(lines_1h_high, line.new(bar_idx_1h, ph_1h, bar_index, ph_1h, xloc=xloc.bar_index, color=h1_high_color, width=h1_width, style=h1_style))
+        array.push(prices_1h_high, ph_1h)
+        array.push(bars_1h_high, bar_idx_1h)
+        array.push(swept_1h_high, false)
+        array.push(sweep_bar_1h_high, na)
+        if h1_show_labels
+            array.push(labels_1h_high, label.new(bar_index, ph_1h, "1H High", xloc=xloc.bar_index, color=h1_high_color, textcolor=color.white, size=size.small))
+    
+    if not na(pl_1h)
+        array.push(lines_1h_low, line.new(bar_idx_1h, pl_1h, bar_index, pl_1h, xloc=xloc.bar_index, color=h1_low_color, width=h1_width, style=h1_style))
+        array.push(prices_1h_low, pl_1h)
+        array.push(bars_1h_low, bar_idx_1h)
+        array.push(swept_1h_low, false)
+        array.push(sweep_bar_1h_low, na)
+        if h1_show_labels
+            array.push(labels_1h_low, label.new(bar_index, pl_1h, "1H Low", xloc=xloc.bar_index, color=h1_low_color, textcolor=color.white, size=size.small))
+
+// Process 4H swings
+if show_4h_on_chart
+    if not na(ph_4h)
+        array.push(lines_4h_high, line.new(bar_idx_4h, ph_4h, bar_index, ph_4h, xloc=xloc.bar_index, color=h4_high_color, width=h4_width, style=h4_style))
+        array.push(prices_4h_high, ph_4h)
+        array.push(bars_4h_high, bar_idx_4h)
+        array.push(swept_4h_high, false)
+        array.push(sweep_bar_4h_high, na)
+        if h4_show_labels
+            array.push(labels_4h_high, label.new(bar_index, ph_4h, "4H High", xloc=xloc.bar_index, color=h4_high_color, textcolor=color.white, size=size.small))
+    
+    if not na(pl_4h)
+        array.push(lines_4h_low, line.new(bar_idx_4h, pl_4h, bar_index, pl_4h, xloc=xloc.bar_index, color=h4_low_color, width=h4_width, style=h4_style))
+        array.push(prices_4h_low, pl_4h)
+        array.push(bars_4h_low, bar_idx_4h)
+        array.push(swept_4h_low, false)
+        array.push(sweep_bar_4h_low, na)
+        if h4_show_labels
+            array.push(labels_4h_low, label.new(bar_index, pl_4h, "4H Low", xloc=xloc.bar_index, color=h4_low_color, textcolor=color.white, size=size.small))
+
+// Process Daily swings
+if show_d_on_chart
+    if not na(ph_d)
+        array.push(lines_d_high, line.new(bar_idx_d, ph_d, bar_index, ph_d, xloc=xloc.bar_index, color=d_high_color, width=d_width, style=d_style))
+        array.push(prices_d_high, ph_d)
+        array.push(bars_d_high, bar_idx_d)
+        array.push(swept_d_high, false)
+        array.push(sweep_bar_d_high, na)
+        if d_show_labels
+            array.push(labels_d_high, label.new(bar_index, ph_d, "D High", xloc=xloc.bar_index, color=d_high_color, textcolor=color.white, size=size.small))
+    
+    if not na(pl_d)
+        array.push(lines_d_low, line.new(bar_idx_d, pl_d, bar_index, pl_d, xloc=xloc.bar_index, color=d_low_color, width=d_width, style=d_style))
+        array.push(prices_d_low, pl_d)
+        array.push(bars_d_low, bar_idx_d)
+        array.push(swept_d_low, false)
+        array.push(sweep_bar_d_low, na)
+        if d_show_labels
+            array.push(labels_d_low, label.new(bar_index, pl_d, "D Low", xloc=xloc.bar_index, color=d_low_color, textcolor=color.white, size=size.small))
+
+// Sweep detection for 1H highs
+for i = 0 to array.size(lines_1h_high) - 1
+    if not array.get(swept_1h_high, i)
+        if high > array.get(prices_1h_high, i)
+            array.set(swept_1h_high, i, true)
+            array.set(sweep_bar_1h_high, i, bar_index)
+
+// Sweep detection for 1H lows
+for i = 0 to array.size(lines_1h_low) - 1
+    if not array.get(swept_1h_low, i)
+        if low < array.get(prices_1h_low, i)
+            array.set(swept_1h_low, i, true)
+            array.set(sweep_bar_1h_low, i, bar_index)
+
+// Sweep detection for 4H highs
+for i = 0 to array.size(lines_4h_high) - 1
+    if not array.get(swept_4h_high, i)
+        if high > array.get(prices_4h_high, i)
+            array.set(swept_4h_high, i, true)
+            array.set(sweep_bar_4h_high, i, bar_index)
+
+// Sweep detection for 4H lows
+for i = 0 to array.size(lines_4h_low) - 1
+    if not array.get(swept_4h_low, i)
+        if low < array.get(prices_4h_low, i)
+            array.set(swept_4h_low, i, true)
+            array.set(sweep_bar_4h_low, i, bar_index)
+
+// Sweep detection for Daily highs
+for i = 0 to array.size(lines_d_high) - 1
+    if not array.get(swept_d_high, i)
+        if high > array.get(prices_d_high, i)
+            array.set(swept_d_high, i, true)
+            array.set(sweep_bar_d_high, i, bar_index)
+
+// Sweep detection for Daily lows
+for i = 0 to array.size(lines_d_low) - 1
+    if not array.get(swept_d_low, i)
+        if low < array.get(prices_d_low, i)
+            array.set(swept_d_low, i, true)
+            array.set(sweep_bar_d_low, i, bar_index)
+
+// Countdown and deletion for 1H (5 closed 1H candles)
+h1_bars_elapsed = request.security(syminfo.tickerid, "60", bar_index, lookahead=barmerge.lookahead_off)
+
+for i = array.size(lines_1h_high) - 1 to 0 by -1
+    if array.get(swept_1h_high, i)
+        h1_bars_since = h1_bars_elapsed - array.get(sweep_bar_1h_high, i)
+        if h1_bars_since >= 5
+            line.delete(array.get(lines_1h_high, i))
+            array.remove(lines_1h_high, i)
+            array.remove(prices_1h_high, i)
+            array.remove(bars_1h_high, i)
+            array.remove(swept_1h_high, i)
+            array.remove(sweep_bar_1h_high, i)
+            if i < array.size(labels_1h_high)
+                label.delete(array.get(labels_1h_high, i))
+                array.remove(labels_1h_high, i)
+
+for i = array.size(lines_1h_low) - 1 to 0 by -1
+    if array.get(swept_1h_low, i)
+        h1_bars_since = h1_bars_elapsed - array.get(sweep_bar_1h_low, i)
+        if h1_bars_since >= 5
+            line.delete(array.get(lines_1h_low, i))
+            array.remove(lines_1h_low, i)
+            array.remove(prices_1h_low, i)
+            array.remove(bars_1h_low, i)
+            array.remove(swept_1h_low, i)
+            array.remove(sweep_bar_1h_low, i)
+            if i < array.size(labels_1h_low)
+                label.delete(array.get(labels_1h_low, i))
+                array.remove(labels_1h_low, i)
+
+// Countdown and deletion for 4H (4 closed 4H candles)
+h4_bars_elapsed = request.security(syminfo.tickerid, "240", bar_index, lookahead=barmerge.lookahead_off)
+
+for i = array.size(lines_4h_high) - 1 to 0 by -1
+    if array.get(swept_4h_high, i)
+        h4_bars_since = h4_bars_elapsed - array.get(sweep_bar_4h_high, i)
+        if h4_bars_since >= 4
+            line.delete(array.get(lines_4h_high, i))
+            array.remove(lines_4h_high, i)
+            array.remove(prices_4h_high, i)
+            array.remove(bars_4h_high, i)
+            array.remove(swept_4h_high, i)
+            array.remove(sweep_bar_4h_high, i)
+            if i < array.size(labels_4h_high)
+                label.delete(array.get(labels_4h_high, i))
+                array.remove(labels_4h_high, i)
+
+for i = array.size(lines_4h_low) - 1 to 0 by -1
+    if array.get(swept_4h_low, i)
+        h4_bars_since = h4_bars_elapsed - array.get(sweep_bar_4h_low, i)
+        if h4_bars_since >= 4
+            line.delete(array.get(lines_4h_low, i))
+            array.remove(lines_4h_low, i)
+            array.remove(prices_4h_low, i)
+            array.remove(bars_4h_low, i)
+            array.remove(swept_4h_low, i)
+            array.remove(sweep_bar_4h_low, i)
+            if i < array.size(labels_4h_low)
+                label.delete(array.get(labels_4h_low, i))
+                array.remove(labels_4h_low, i)
+
+// Countdown and deletion for Daily (3 closed Daily candles)
+d_bars_elapsed = request.security(syminfo.tickerid, "D", bar_index, lookahead=barmerge.lookahead_off)
+
+for i = array.size(lines_d_high) - 1 to 0 by -1
+    if array.get(swept_d_high, i)
+        d_bars_since = d_bars_elapsed - array.get(sweep_bar_d_high, i)
+        if d_bars_since >= 3
+            line.delete(array.get(lines_d_high, i))
+            array.remove(lines_d_high, i)
+            array.remove(prices_d_high, i)
+            array.remove(bars_d_high, i)
+            array.remove(swept_d_high, i)
+            array.remove(sweep_bar_d_high, i)
+            if i < array.size(labels_d_high)
+                label.delete(array.get(labels_d_high, i))
+                array.remove(labels_d_high, i)
+
+for i = array.size(lines_d_low) - 1 to 0 by -1
+    if array.get(swept_d_low, i)
+        d_bars_since = d_bars_elapsed - array.get(sweep_bar_d_low, i)
+        if d_bars_since >= 3
+            line.delete(array.get(lines_d_low, i))
+            array.remove(lines_d_low, i)
+            array.remove(prices_d_low, i)
+            array.remove(bars_d_low, i)
+            array.remove(swept_d_low, i)
+            array.remove(sweep_bar_d_low, i)
+            if i < array.size(labels_d_low)
+                label.delete(array.get(labels_d_low, i))
+                array.remove(labels_d_low, i)
+
+// ═══════════════════════════════════════════════
+// ── EQUAL LEVELS DETECTION ─────────────────────
+// ═══════════════════════════════════════════════
+
+tolerance_price = eq_tolerance * syminfo.mintick
+
+// Check 1H Equal Highs
+if show_1h_on_chart and show_1h_eq and not na(ph_1h)
+    for i = 0 to array.size(prices_1h_high) - 1
+        if math.abs(ph_1h - array.get(prices_1h_high, i)) <= tolerance_price and ph_1h != array.get(prices_1h_high, i)
+            eq_line = line.new(array.get(bars_1h_high, i), ph_1h, bar_idx_1h, ph_1h, xloc=xloc.bar_index, color=h1_eq_color, width=h1_width, style=line.style_dashed)
+            array.push(lines_1h_eq, eq_line)
+            if h1_show_labels
+                eq_label = label.new(bar_index, ph_1h, "1H Equal Highs", xloc=xloc.bar_index, color=h1_eq_color, textcolor=color.white, size=size.small)
+                array.push(labels_1h_eq, eq_label)
+            break
+
+// Check 1H Equal Lows
+if show_1h_on_chart and show_1h_eq and not na(pl_1h)
+    for i = 0 to array.size(prices_1h_low) - 1
+        if math.abs(pl_1h - array.get(prices_1h_low, i)) <= tolerance_price and pl_1h != array.get(prices_1h_low, i)
+            eq_line = line.new(array.get(bars_1h_low, i), pl_1h, bar_idx_1h, pl_1h, xloc=xloc.bar_index, color=h1_eq_color, width=h1_width, style=line.style_dashed)
+            array.push(lines_1h_eq, eq_line)
+            if h1_show_labels
+                eq_label = label.new(bar_index, pl_1h, "1H Equal Lows", xloc=xloc.bar_index, color=h1_eq_color, textcolor=color.white, size=size.small)
+                array.push(labels_1h_eq, eq_label)
+            break
+
+// Check 4H Equal Highs
+if show_4h_on_chart and show_4h_eq and not na(ph_4h)
+    for i = 0 to array.size(prices_4h_high) - 1
+        if math.abs(ph_4h - array.get(prices_4h_high, i)) <= tolerance_price and ph_4h != array.get(prices_4h_high, i)
+            eq_line = line.new(array.get(bars_4h_high, i), ph_4h, bar_idx_4h, ph_4h, xloc=xloc.bar_index, color=h4_eq_color, width=h4_width, style=line.style_dashed)
+            array.push(lines_4h_eq, eq_line)
+            if h4_show_labels
+                eq_label = label.new(bar_index, ph_4h, "4H Equal Highs", xloc=xloc.bar_index, color=h4_eq_color, textcolor=color.white, size=size.small)
+                array.push(labels_4h_eq, eq_label)
+            break
+
+// Check 4H Equal Lows
+if show_4h_on_chart and show_4h_eq and not na(pl_4h)
+    for i = 0 to array.size(prices_4h_low) - 1
+        if math.abs(pl_4h - array.get(prices_4h_low, i)) <= tolerance_price and pl_4h != array.get(prices_4h_low, i)
+            eq_line = line.new(array.get(bars_4h_low, i), pl_4h, bar_idx_4h, pl_4h, xloc=xloc.bar_index, color=h4_eq_color, width=h4_width, style=line.style_dashed)
+            array.push(lines_4h_eq, eq_line)
+            if h4_show_labels
+                eq_label = label.new(bar_index, pl_4h, "4H Equal Lows", xloc=xloc.bar_index, color=h4_eq_color, textcolor=color.white, size=size.small)
+                array.push(labels_4h_eq, eq_label)
+            break
+
+// Check Daily Equal Highs
+if show_d_on_chart and show_d_eq and not na(ph_d)
+    for i = 0 to array.size(prices_d_high) - 1
+        if math.abs(ph_d - array.get(prices_d_high, i)) <= tolerance_price and ph_d != array.get(prices_d_high, i)
+            eq_line = line.new(array.get(bars_d_high, i), ph_d, bar_idx_d, ph_d, xloc=xloc.bar_index, color=d_eq_color, width=d_width, style=line.style_dashed)
+            array.push(lines_d_eq, eq_line)
+            if d_show_labels
+                eq_label = label.new(bar_index, ph_d, "D Equal Highs", xloc=xloc.bar_index, color=d_eq_color, textcolor=color.white, size=size.small)
+                array.push(labels_d_eq, eq_label)
+            break
+
+// Check Daily Equal Lows
+if show_d_on_chart and show_d_eq and not na(pl_d)
+    for i = 0 to array.size(prices_d_low) - 1
+        if math.abs(pl_d - array.get(prices_d_low, i)) <= tolerance_price and pl_d != array.get(prices_d_low, i)
+            eq_line = line.new(array.get(bars_d_low, i), pl_d, bar_idx_d, pl_d, xloc=xloc.bar_index, color=d_eq_color, width=d_width, style=line.style_dashed)
+            array.push(lines_d_eq, eq_line)
+            if d_show_labels
+                eq_label = label.new(bar_index, pl_d, "D Equal Lows", xloc=xloc.bar_index, color=d_eq_color, textcolor=color.white, size=size.small)
+                array.push(labels_d_eq, eq_label)
+            break
+
+// Cleanup equal level arrays
+if array.size(lines_1h_eq) > 50
+    old_eq_line = array.shift(lines_1h_eq)
+    line.delete(old_eq_line)
+    if array.size(labels_1h_eq) > 0
+        old_eq_label = array.shift(labels_1h_eq)
+        label.delete(old_eq_label)
+
+if array.size(lines_4h_eq) > 50
+    old_eq_line = array.shift(lines_4h_eq)
+    line.delete(old_eq_line)
+    if array.size(labels_4h_eq) > 0
+        old_eq_label = array.shift(labels_4h_eq)
+        label.delete(old_eq_label)
+
+if array.size(lines_d_eq) > 50
+    old_eq_line = array.shift(lines_d_eq)
+    line.delete(old_eq_line)
+    if array.size(labels_d_eq) > 0
+        old_eq_label = array.shift(labels_d_eq)
+        label.delete(old_eq_label)
